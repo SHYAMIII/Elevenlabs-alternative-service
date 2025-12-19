@@ -4005,7 +4005,7 @@ if __name__ == "__main__":
             f"min_energy={INTERRUPT_MIN_ENERGY}, baseline_factor={INTERRUPT_BASELINE_FACTOR}, "
             f"require_text={INTERRUPT_REQUIRE_TEXT}"
         )
-        uvicorn.run("new:app",
+        uvicorn.run("agent_service:app",
                     host=args.host,
                     port=args.port,
                     reload=False,
@@ -4014,3 +4014,4 @@ if __name__ == "__main__":
                     ws_ping_interval=10.0,    # Add WebSocket ping
                     ws_ping_timeout=10.0
                     )
+
