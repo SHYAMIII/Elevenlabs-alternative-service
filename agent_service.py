@@ -244,6 +244,21 @@ class WebhookResponse(BaseModel):
     agent_id: Optional[str] = None
 
 
+class ToolCreate(BaseModel):
+    """Create custom tool for agent"""
+    tool_name: str = Field(..., description="Name of the tool (used in [TOOL:name:...] syntax)")
+    description: str = Field(..., description="Description of what the tool does")
+    webhook_url: str = Field(..., description="URL to call when tool is invoked")
+    parameters: Optional[Dict] = Field(
+        default_factory=dict,
+        description="Parameter schema for the tool",
+        example={
+            "param1": {"type": "string", "required": True, "description": "First parameter"},
+            "param2": {"type": "number", "required": False, "description": "Second parameter"}
+        }
+    )
+
+
 load_dotenv()
 # ----------------------------
 # Environment and configuration
@@ -495,10 +510,11 @@ async def transfer_call_tool(call_sid: str, department: str = "sales") -> dict:
                 break
 
         try:
-            await conn.ws.send_json({
-                "event": "clear",
-                "streamSid": conn.stream_sid
-            })
+            if conn.stream_sid:  # ✅ Validate stream_sid exists
+                await conn.ws.send_json({
+                    "event": "clear",
+                    "streamSid": conn.stream_sid
+                })
         except:
             pass
 
@@ -525,6 +541,121 @@ async def transfer_call_tool(call_sid: str, department: str = "sales") -> dict:
             "success": False,
             "error": str(e)
         }
+def clean_markdown_for_tts(text: str) -> str:
+    """Remove markdown formatting before TTS to prevent reading symbols aloud"""
+    # Remove bold: **text** or __text__
+    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
+    text = re.sub(r'__(.+?)__', r'\1', text)
+    
+    # Remove italic: *text* or _text_
+    text = re.sub(r'\*(.+?)\*', r'\1', text)
+    text = re.sub(r'_(.+?)_', r'\1', text)
+    
+    # Remove strikethrough: ~~text~~
+    text = re.sub(r'~~(.+?)~~', r'\1', text)
+    
+    # Remove code blocks: `text` or ```text```
+    text = re.sub(r'```[\s\S]*?```', '', text)
+    text = re.sub(r'`(.+?)`', r'\1', text)
+    
+    # Remove links: [text](url) -> text
+    text = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', text)
+    
+    # Remove headers: # text -> text
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    
+    # Remove bullet points: - text or * text -> text
+    text = re.sub(r'^[\-\*]\s+', '', text, flags=re.MULTILINE)
+    
+    # Remove numbered lists: 1. text -> text
+    text = re.sub(r'^\d+\.\s+', '', text, flags=re.MULTILINE)
+    
+    # Remove extra whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    return text
+
+
+def clean_markdown_for_tts(text: str) -> str:
+    """Remove markdown formatting before TTS to prevent reading symbols aloud"""
+    # Remove bold: **text** or __text__
+    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
+    text = re.sub(r'__(.+?)__', r'\1', text)
+    
+    # Remove italic: *text* or _text_
+    text = re.sub(r'\*(.+?)\*', r'\1', text)
+    text = re.sub(r'_(.+?)_', r'\1', text)
+    
+    # Remove strikethrough: ~~text~~
+    text = re.sub(r'~~(.+?)~~', r'\1', text)
+    
+    # Remove code blocks: `text` or ```text```
+    text = re.sub(r'```[\s\S]*?```', '', text)
+    text = re.sub(r'`(.+?)`', r'\1', text)
+    
+    # Remove links: [text](url) -> text
+    text = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', text)
+    
+    # Remove headers: # text -> text
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    
+    # Remove bullet points: - text or * text -> text
+    text = re.sub(r'^[\-\*]\s+', '', text, flags=re.MULTILINE)
+    
+    # Remove numbered lists: 1. text -> text
+    text = re.sub(r'^\d+\.\s+', '', text, flags=re.MULTILINE)
+    
+    # Remove extra whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    return text
+
+
+def clean_markdown_for_tts(text: str) -> str:
+    """Remove markdown formatting before TTS to prevent reading symbols aloud"""
+    # Remove bold: **text** or __text__
+    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
+    text = re.sub(r'__(.+?)__', r'\1', text)
+    
+    # Remove italic: *text* or _text_
+    text = re.sub(r'\*(.+?)\*', r'\1', text)
+    text = re.sub(r'_(.+?)_', r'\1', text)
+    
+    # Remove strikethrough: ~~text~~
+    text = re.sub(r'~~(.+?)~~', r'\1', text)
+    
+    # Remove code blocks: `text` or ```text```
+    text = re.sub(r'```[\s\S]*?```', '', text)
+    text = re.sub(r'`(.+?)`', r'\1', text)
+    
+    # Remove links: [text](url) -> text
+    text = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', text)
+    
+    # Remove headers: # text -> text
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    
+    # Remove bullet points: - text or * text -> text
+    text = re.sub(r'^[\-\*]\s+', '', text, flags=re.MULTILINE)
+    
+    # Remove numbered lists: 1. text -> text
+    text = re.sub(r'^\d+\.\s+', '', text, flags=re.MULTILINE)
+    
+    # Remove extra whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    return text
+
+
+def detect_intent(text: str) -> str:
+    """✨ HUMAN-LIKE: Only detect GOODBYE - let LLM handle everything else naturally"""
+    t = text.lower().strip()
+
+    # Only detect goodbye for call termination
+    if any(x in t for x in ["bye", "goodbye", "end the call", "that's all", "talk later"]):
+        return "GOODBYE"
+
+    # Everything else goes to LLM for contextual, human-like responses
+    return "QUESTION"
 
 
 def detect_confirmation_response(text: str) -> Optional[str]:
@@ -620,11 +751,87 @@ def parse_llm_response(text: str) -> Tuple[str, Optional[dict]]:
                         "params": {"department": department},
                         "requires_confirmation": False
                     }
+            else:
+                # Generic custom tool handler
+                # Format: [TOOL:tool_name:param1:value1:param2:value2]
+                # Or: [TOOL:tool_name:value1:value2] (positional)
+                tool_params = {}
+                
+                # Try to parse as key:value pairs or positional args
+                if len(tool_parts) > 1:
+                    # Check if it looks like key:value (contains = or looks paired)
+                    remaining_parts = tool_parts[1:]
+                    
+                    # Try positional parameters first (simpler)
+                    for idx, part in enumerate(remaining_parts):
+                        tool_params[f"param{idx+1}"] = part.strip()
+                
+                tool_data = {
+                    "tool": tool_name,
+                    "params": tool_params,
+                    "requires_confirmation": False
+                }
 
+    # Remove tool markers from text
     clean_text = re.sub(tool_pattern, '', text)
-    clean_text = re.sub(confirm_pattern, '', clean_text).strip()
+    clean_text = re.sub(confirm_pattern, '', clean_text)
+    clean_text = clean_text.strip()
 
     return clean_text, tool_data
+
+
+async def call_webhook_tool(webhook_url: str, tool_name: str, parameters: dict, call_context: dict) -> dict:
+    """Call an external webhook tool and return the response"""
+    try:
+        payload = {
+            "tool_name": tool_name,
+            "parameters": parameters,
+            "call_context": call_context,
+            "timestamp": dt.utcnow().isoformat()
+        }
+        
+        _logger.info(f"🔧 Calling webhook tool: {tool_name} at {webhook_url}")
+        _logger.debug(f"   Parameters: {parameters}")
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                webhook_url,
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                _logger.info(f"✅ Webhook tool response: {result}")
+                return {
+                    "success": True,
+                    "tool_name": tool_name,
+                    "response": result.get("response", result),
+                    "data": result.get("data", {}),
+                    "message": result.get("message", "")
+                }
+            else:
+                _logger.error(f"❌ Webhook returned status {response.status_code}")
+                return {
+                    "success": False,
+                    "error": f"Webhook returned status {response.status_code}",
+                    "tool_name": tool_name
+                }
+                
+    except asyncio.TimeoutError:
+        _logger.error(f"❌ Webhook timeout for {tool_name}")
+        return {
+            "success": False,
+            "error": "Tool request timed out",
+            "tool_name": tool_name
+        }
+    except Exception as e:
+        _logger.error(f"❌ Webhook error for {tool_name}: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "tool_name": tool_name
+        }
 
 
 async def execute_detected_tool(call_sid: str, tool_data: dict) -> dict:
@@ -633,14 +840,71 @@ async def execute_detected_tool(call_sid: str, tool_data: dict) -> dict:
     params = tool_data.get("params", {})
 
     _logger.info(
-        f"ðŸ”§ Executing LLM-requested tool: {tool_name} with params: {params}")
+        f"🔧 Executing LLM-requested tool: {tool_name} with params: {params}")
 
+    # Built-in tools
     if tool_name == "end_call":
         result = await end_call_tool(call_sid, **params)
     elif tool_name == "transfer_call":
         result = await transfer_call_tool(call_sid, **params)
     else:
-        result = {"success": False, "error": f"Unknown tool: {tool_name}"}
+        # Try to find custom webhook tool
+        conn = manager.get(call_sid)
+        if not conn or not conn.agent_id:
+            return {"success": False, "error": f"Unknown tool: {tool_name}"}
+        
+        db = SessionLocal()
+        try:
+            # Look up the tool in the database
+            tool = db.query(AgentTool).filter(
+                AgentTool.agent_id == conn.agent_id,
+                AgentTool.tool_name == tool_name,
+                AgentTool.is_active == True
+            ).first()
+            
+            if not tool or not tool.webhook_url:
+                return {"success": False, "error": f"Unknown or inactive tool: {tool_name}"}
+            
+            # Prepare call context
+            call_context = {
+                "call_sid": call_sid,
+                "agent_id": conn.agent_id,
+                "conversation_id": conn.conversation_id,
+                "phone_number": None,
+                "dynamic_variables": conn.dynamic_variables or {}
+            }
+            
+            # Call the webhook
+            result = await call_webhook_tool(
+                webhook_url=tool.webhook_url,
+                tool_name=tool_name,
+                parameters=params,
+                call_context=call_context
+            )
+            
+            # Send webhook event for monitoring
+            webhooks = db.query(WebhookConfig).filter(
+                WebhookConfig.agent_id == conn.agent_id,
+                WebhookConfig.is_active == True
+            ).all()
+            
+            for webhook in webhooks:
+                if "tool.called" in webhook.events:
+                    await send_webhook(
+                        webhook.webhook_url,
+                        "tool.called",
+                        {
+                            "call_sid": call_sid,
+                            "agent_id": conn.agent_id,
+                            "tool_name": tool_name,
+                            "parameters": params,
+                            "result": result,
+                            "timestamp": dt.utcnow().isoformat()
+                        }
+                    )
+            
+        finally:
+            db.close()
 
     return result
 
@@ -749,50 +1013,87 @@ async def query_rag_streaming(
                     vars_lines.append(f"- **{key}**: {value}")
             if vars_lines:
                 vars_section = "\n\n## Lead/Customer Information:\n" + "\n".join(vars_lines)
-        
+        call_context = ""
+        if conn:
+            call_context = f"""
+        ## CALL CONTEXT (VERY IMPORTANT)
+        You are on a LIVE PHONE CALL with a real person.
+        - DO NOT include:
+            - stage directions (e.g. **pause**, **laughs**, **sighs**)
+            - do not use **bold** or _italics_, just respond in normal text and paragraphs
+            - emotional markers (e.g. [happy], [thinking])
+            - symbols like *, [], (), <> 
+            - DO NOT describe actions or emotions.
+
+        Current call phase: {conn.call_phase}
+        Detected user intent: {conn.last_intent}
+
+        Speech rules:
+        - Speak briefly and naturally, like a human on the phone
+        - Never explain in long paragraphs until asked
+        """
+
         prompt = f"""{agent_prompt}
 
+    {call_context}
+    
 ## Current Date (America/New_York):
 Today is {current_date}.{vars_section}
 
-## Knowledge Base Context:
-{context_text if context_text.strip() else "No specific context found."}
+## Knowledge Base Context  (please make responses from only this company knowledge base):
+{context_text if context_text.strip() else "No specific context found for user's this current query."}
 
-## Conversation History:
-{history_text if history_text else "This is the start of the call."}
+## current conversation history(if nothing is here, that means this is the start of the call):
+{history_text if history_text else ""}
 
-## Current Question:
+## User's Current Question:
 {question}"""
     else:
-        prompt = f"""You are MILA, an Outbound AI voice call assistant for Technology Mindz. Technology Mindz provides some of the key services- Salesforce, Artificial Intelligence, Managed IT Services, Cybersecurity, Microsoft Dynamics 365, Staff Augmentation, CRM Consulting, Web Development, Mobile App Development.
+        prompt = f"""You are MILA, a friendly voice assistant for Technology Mindz. Technology Mindz provides key services: Salesforce, AI, Managed IT, Cybersecurity, Microsoft Dynamics 365, Staff Augmentation, CRM Consulting, Web Development, Mobile App Development.
 
 ## Current Date (America/New_York):
-Today is {current_date}. Use this information for scheduling, date validation, and context-aware responses.
+Today is {current_date}.
 
-## situation:
-- you have made an outbound call, you are on a call and talking to a user.
-- keep yourself as a human is talking to a human on call.
+## YOUR PHONE PERSONALITY:
+- You're on a LIVE phone call with a real person
+- Speak naturally like a human would on the phone
+- Keep responses BRIEF (1-2 sentences max)
+- Use natural filler words: "um", "you know", "well", "actually", "yeah"
+- Acknowledge what they say naturally: "Got it", "Makes sense", "Oh interesting", "I see", "Right"
+- Sound conversational, not scripted
+- Mirror their energy and pace
 
-## STRICT INSTRUCTIONS:
-  CRITICAL: Only use the **company knowledge base context** to answer the user's **Current Question**.
-- always check user **Current Question** available in **company knowledge base's** data, if is not available than decline to respone about that, but never halluinate.
-- Keep responses accurate from the **company knowledge base's** data only.
-- Keep responses conversative (that is going to use in tts) with natural filler words.
-- Offer to schedule meetings it when relevant.
-- For meeting scheduling: ask for date, time, and timezone. Allow only FUTURE dates (not today).
-- after getting these details of meeting -> tell user to wait while you are validating the meeting details to be in working hours or working days and output exact this: [TOOL:meeting_call:DATE and time in str format:TIMEZONE in IANA format:user's address based on their timezone] -> if response from tool is "valid : true" then confirm the meeting is scheduled otherwise apologize and ask for rescheduling.
-- If you understand that the user wants to finish the conversation or end the call (for example they say "bye", "thank you", "that's all", "nothing else", "talk later", "end the call", or show signs of closing the call), then politely end the conversation and output this exactly: [TOOL:end_call]
+## RESPONSE GUIDELINES:
+- For simple acknowledgments: Be brief and natural ("Yeah, got it" / "Makes sense" / "Okay, cool")
+- For questions: Answer concisely from the knowledge base
+- For confirmations: Respond naturally based on context (don't just say "okay got it" - be contextual)
+- For hesitation ("um", "uh"): Gently encourage them ("Take your time" / "What's on your mind?")
+- Never give long explanations - this is a phone call, not an essay
 
-## Previous Conversation History on current call:
-`{history_text if history_text else "This is the start of the call."}`
+## KNOWLEDGE BASE RULES:
+- Only use company knowledge base for factual answers
+- If something isn't in the knowledge base, say "I'm not sure about that, but let me connect you with someone who can help"
+- Never make up information
 
-## company knowledge base context:
-**{context_text}**
+## MEETING SCHEDULING:
+- When relevant, offer to schedule meetings
+- Ask for: date, time, timezone (only FUTURE dates)
+- After getting details: [TOOL:meeting_call:DATE:TIMEZONE:address]
+- If valid=true: confirm scheduled, else: apologize and reschedule
 
-## Current Question:
-**{question}**
+## ENDING CALLS:
+- If they want to end ("bye", "that's all", "talk later"), output: [TOOL:end_call]
 
-Assistant:"""
+## Previous Conversation:
+{history_text if history_text else "This is the start of the call."}
+
+## Knowledge Base:
+{context_text if context_text else "No specific context."}
+
+## What they just said:
+{question}
+
+Respond naturally and briefly:"""
 
     # Rest of your streaming code remains the same...
     queue: asyncio.Queue = asyncio.Queue(maxsize=500)
@@ -885,6 +1186,10 @@ class WSConn:
         self.currently_speaking: bool = False
         self.interrupt_requested: bool = False
         self.conversation_history: List[Dict[str, str]] = []
+        # 🧠 CALL AWARENESS (ElevenLabs-style)
+        self.call_phase: str = "CALL_START"
+        self.last_intent: Optional[str] = None
+
         
         # ✨ NEW: Agent and call data
         self.agent_id: Optional[str] = None
@@ -977,6 +1282,15 @@ class ConnectionManager:
             return False
 
         if conn.interrupt_requested:
+            return False
+
+        # ✅ Validate payload is not empty
+        if not raw_mulaw_bytes or len(raw_mulaw_bytes) == 0:
+            return False
+
+        # ✅ Validate stream_sid
+        if not stream_sid or stream_sid != conn.stream_sid:
+            _logger.warning(f"Invalid stream_sid: {stream_sid} vs {conn.stream_sid}")
             return False
 
         payload = base64.b64encode(raw_mulaw_bytes).decode("utf-8")
@@ -1174,10 +1488,11 @@ async def handle_interrupt(call_sid: str):
             break
 
     try:
-        await conn.ws.send_json({
-            "event": "clear",
-            "streamSid": conn.stream_sid
-        })
+        if conn.stream_sid:  # ✅ Validate stream_sid exists
+            await conn.ws.send_json({
+                "event": "clear",
+                "streamSid": conn.stream_sid
+            })
     except:
         pass
 
@@ -1255,6 +1570,7 @@ async def stream_tts_worker(call_sid: str):
             conn.speech_energy_buffer.clear()
             conn.speech_start_time = None
             is_first_chunk = True  # Track first chunk of sentence
+            audio_chunks_buffer = []  # Buffer to apply fade-out to last chunk
 
             try:
                 url = "https://api.deepgram.com/v1/speak"
@@ -1326,7 +1642,7 @@ async def stream_tts_worker(call_sid: str):
                                     samples = list(struct.unpack(
                                         f'<{len(pcm_8k)//2}h', pcm_8k))
 
-                                    # Apply fade-in to first 160 samples (10ms at 8kHz)
+                                    # Apply fade-in to first 160 samples (20ms at 8kHz)
                                     fade_samples = min(160, len(samples))
                                     for i in range(fade_samples):
                                         fade_factor = (i + 1) / fade_samples
@@ -1338,34 +1654,93 @@ async def stream_tts_worker(call_sid: str):
                                         f'<{len(samples)}h', *samples)
                                     is_first_chunk = False
 
-                                mulaw = audioop.lin2ulaw(pcm_8k, 2)
+                                # Buffer the chunk for potential fade-out processing
+                                audio_chunks_buffer.append(pcm_8k)
+                                
+                                # Convert and send buffered chunks (keep last 2 for fade-out)
+                                while len(audio_chunks_buffer) > 2:
+                                    chunk_to_convert = audio_chunks_buffer.pop(0)
+                                    mulaw = audioop.lin2ulaw(chunk_to_convert, 2)
 
-                                for i in range(0, len(mulaw), 160):
-                                    if conn.interrupt_requested:
-                                        interrupted = True
+                                    for i in range(0, len(mulaw), 160):
+                                        if conn.interrupt_requested:
+                                            interrupted = True
+                                            break
+
+                                        chunk_to_send = mulaw[i:i+160]
+                                        if len(chunk_to_send) < 160:
+                                            chunk_to_send += b'\xff' * \
+                                                (160 - len(chunk_to_send))
+
+                                        success = await manager.send_media_chunk(
+                                            call_sid, conn.stream_sid, chunk_to_send
+                                        )
+                                        if not success:
+                                            interrupted = True
+                                            break
+
+                                        conn.last_tts_send_time = time.time()
+                                        chunk_count += 1
+                                        await asyncio.sleep(0.018)
+
+                                    if interrupted:
                                         break
-
-                                    chunk_to_send = mulaw[i:i+160]
-                                    if len(chunk_to_send) < 160:
-                                        chunk_to_send += b'\xff' * \
-                                            (160 - len(chunk_to_send))
-
-                                    success = await manager.send_media_chunk(
-                                        call_sid, conn.stream_sid, chunk_to_send
-                                    )
-                                    if not success:
-                                        interrupted = True
-                                        break
-
-                                    conn.last_tts_send_time = time.time()
-                                    chunk_count += 1
-                                    await asyncio.sleep(0.018)
-
-                                if interrupted:
-                                    break
 
                             except Exception as e:
                                 continue
+                
+                # ✅ Process remaining buffered chunks with fade-out on the last one
+                if not interrupted and audio_chunks_buffer:
+                    for idx, chunk_to_convert in enumerate(audio_chunks_buffer):
+                        is_last_chunk = (idx == len(audio_chunks_buffer) - 1)
+                        
+                        # Apply fade-out to last chunk to prevent clicks between sentences
+                        if is_last_chunk and len(chunk_to_convert) >= 320:
+                            try:
+                                samples = list(struct.unpack(
+                                    f'<{len(chunk_to_convert)//2}h', chunk_to_convert))
+                                
+                                # Apply fade-out to last 160 samples (20ms at 8kHz)
+                                fade_samples = min(160, len(samples))
+                                start_idx = len(samples) - fade_samples
+                                for i in range(fade_samples):
+                                    fade_factor = 1.0 - ((i + 1) / fade_samples)
+                                    samples[start_idx + i] = int(
+                                        samples[start_idx + i] * fade_factor)
+                                
+                                chunk_to_convert = struct.pack(
+                                    f'<{len(samples)}h', *samples)
+                            except Exception as e:
+                                _logger.warning(f"⚠️ Fade-out failed: {e}")
+                        
+                        mulaw = audioop.lin2ulaw(chunk_to_convert, 2)
+                        
+                        for i in range(0, len(mulaw), 160):
+                            if conn.interrupt_requested:
+                                interrupted = True
+                                break
+
+                            chunk_to_send = mulaw[i:i+160]
+                            if len(chunk_to_send) < 160:
+                                chunk_to_send += b'\xff' * \
+                                    (160 - len(chunk_to_send))
+
+                            success = await manager.send_media_chunk(
+                                call_sid, conn.stream_sid, chunk_to_send
+                            )
+                            if not success:
+                                interrupted = True
+                                break
+
+                            conn.last_tts_send_time = time.time()
+                            chunk_count += 1
+                            await asyncio.sleep(0.018)
+
+                        if interrupted:
+                            break
+                    
+                    # Clear buffer after processing
+                    audio_chunks_buffer.clear()
 
                 t_end = time.time()
 
@@ -1413,10 +1788,11 @@ async def speak_text_streaming(call_sid: str, text: str):
         return
 
     try:
-        await conn.ws.send_json({
-            "event": "clear",
-            "streamSid": conn.stream_sid
-        })
+        if conn.stream_sid:  # ✅ Validate stream_sid exists
+            await conn.ws.send_json({
+                "event": "clear",
+                "streamSid": conn.stream_sid
+            })
     except:
         pass
 
@@ -1487,7 +1863,7 @@ async def setup_streaming_stt(call_sid: str):
 
                     if current_buffer:
                         # Check if this continues the current thought
-                        if (not current_buffer.endswith(("^")) and
+                        if (not current_buffer.endswith((".", "!", "?")) and
                                 len(transcript) > 3):
                             # Continue the sentence
                             conn.stt_transcript_buffer += " " + transcript
@@ -1697,6 +2073,9 @@ async def process_streaming_transcript(call_sid: str):
     # âœ… CHECK 5: DOUBLE-CHECK FOR NEW SPEECH
     # ========================================
 
+    # âœ… FIX: Set is_responding flag EARLY to prevent race condition
+    conn.is_responding = True
+
     # Small delay to catch any last-moment speech
     await asyncio.sleep(0.05)
 
@@ -1721,12 +2100,83 @@ async def process_streaming_transcript(call_sid: str):
     _logger.info("âœ… %.1fs silence threshold met (%.2fs)",
                  SILENCE_THRESHOLD_SEC, final_silence)
 
-    # Mark as responding to prevent duplicate processing
-    conn.is_responding = True
-
     try:
         # Get the COMPLETE accumulated transcript
         text = conn.stt_transcript_buffer.strip()
+
+        # 🧠 Detect user intent (ElevenLabs-style)
+        intent = detect_intent(text)
+        conn.last_intent = intent
+
+        _logger.info(f"🎯 Detected intent: {intent} | text='{text}'")
+
+
+        # ⚡ Handle simple intents WITHOUT calling LLM
+        if intent == "CONFIRMATION":
+            # ✅ FIX: Clear buffer BEFORE returning to prevent infinite loop
+            conn.stt_transcript_buffer = ""
+            conn.stt_is_final = False
+            conn.last_interim_text = ""
+            
+            # ✅ FIX: Save to conversation history
+            conn.conversation_history.append({
+                "user": text,
+                "assistant": "Okay, got it.",
+                "timestamp": time.time()
+            })
+            
+            await speak_text_streaming(call_sid, "Okay, got it.")
+            conn.is_responding = False
+            return
+
+        if intent == "HESITATION":
+            # ✅ FIX: Clear buffer BEFORE returning to prevent infinite loop
+            conn.stt_transcript_buffer = ""
+            conn.stt_is_final = False
+            conn.last_interim_text = ""
+            
+            # ✅ FIX: Save to conversation history
+            conn.conversation_history.append({
+                "user": text,
+                "assistant": "No worries, take your time.",
+                "timestamp": time.time()
+            })
+            
+            await speak_text_streaming(call_sid, "No worries, take your time.")
+            conn.is_responding = False
+            return
+
+        if intent == "GOODBYE":
+            # ✅ FIX: Clear buffer BEFORE ending call
+            conn.stt_transcript_buffer = ""
+            conn.stt_is_final = False
+            conn.last_interim_text = ""
+            
+            # ✅ FIX: Save to conversation history
+            conn.conversation_history.append({
+                "user": text,
+                "assistant": "Thanks for your time. Have a great day.",
+                "timestamp": time.time()
+            })
+            
+            await speak_text_streaming(call_sid, "Thanks for your time. Have a great day.")
+            await end_call_tool(call_sid, "user_goodbye")
+            return
+
+
+
+        # 🧠 Update call phase
+        if conn.call_phase == "CALL_START":
+            conn.call_phase = "DISCOVERY"
+
+        elif conn.call_phase == "DISCOVERY":
+            if len(conn.conversation_history) >= 2:
+                conn.call_phase = "ACTIVE"
+
+        elif conn.call_phase == "ACTIVE":
+            if any(w in text.lower() for w in ["bye", "thank", "that's all", "no more"]):
+                conn.call_phase = "CLOSING"
+
 
         # One final interrupt check
         if conn.interrupt_requested:
@@ -1760,11 +2210,19 @@ async def process_streaming_transcript(call_sid: str):
                 conn.last_interim_text = ""
                 return
             else:
-                await speak_text_streaming(call_sid, "Could you please confirm yes or no?")
-                conn.stt_transcript_buffer = ""
-                conn.stt_is_final = False
-                conn.last_interim_text = ""
-                return
+                # ✅ FIX: Check if user changed topic (long response = new question)
+                word_count = len(text.split())
+                if word_count > 5:  # Long response suggests topic change
+                    _logger.info("âœ… User changed topic (%d words) - clearing pending action", word_count)
+                    conn.pending_action = None
+                    # Continue to normal LLM processing below
+                else:
+                    # Still asking for confirmation
+                    await speak_text_streaming(call_sid, "Could you please confirm yes or no?")
+                    conn.stt_transcript_buffer = ""
+                    conn.stt_is_final = False
+                    conn.last_interim_text = ""
+                    return
 
         # âœ… CRITICAL: Clear buffer AFTER getting text
         conn.stt_transcript_buffer = ""
@@ -1804,13 +2262,15 @@ async def process_streaming_transcript(call_sid: str):
 
                 # ✅ Only queue non-empty sentences (skip if only had tool tags)
                 if sentence:
+                    # ✅ Clean markdown before speaking
+                    clean_sentence = clean_markdown_for_tts(sentence)
                     sentence_count += 1
                     _logger.info("🎯 Sentence %d: '%s'",
-                                 sentence_count, sentence)
+                                 sentence_count, clean_sentence)
 
                     # ✅ FIX: Handle queue full gracefully with backpressure
                     try:
-                        await asyncio.wait_for(conn.tts_queue.put(sentence), timeout=2.0)
+                        await asyncio.wait_for(conn.tts_queue.put(clean_sentence), timeout=2.0)
                     except asyncio.TimeoutError:
                         # If queue is full, skip this sentence to prevent deadlock
                         if conn.interrupt_requested:
@@ -1829,9 +2289,11 @@ async def process_streaming_transcript(call_sid: str):
             final_sentence = sentence_buffer.strip()
             # ✅ Only queue if not just tool tags
             if final_sentence and not re.match(r'^\s*\[\w+:[^\]]*\]\s*$', final_sentence):
-                _logger.info("🎯 Final: '%s'", final_sentence)
+                # ✅ Clean markdown before speaking
+                clean_final = clean_markdown_for_tts(final_sentence)
+                _logger.info("🎯 Final: '%s'", clean_final)
                 try:
-                    await asyncio.wait_for(conn.tts_queue.put(final_sentence), timeout=2.0)
+                    await asyncio.wait_for(conn.tts_queue.put(clean_final), timeout=2.0)
                 except asyncio.TimeoutError:
                     _logger.warning("TTS queue full, dropping final sentence")
                 except Exception as e:
@@ -1856,9 +2318,9 @@ async def process_streaming_transcript(call_sid: str):
         else:
             _logger.warning(f"⚠️ NOT added to history - interrupt: {conn.interrupt_requested}, response empty: {not response_buffer.strip()}")
 
-        # Handle tool calls
+        # âœ¨ Handle tool calls - execute and get AI natural response
         if tool_data:
-            _logger.info("Tool detected: %s - requires_confirmation: %s",
+            _logger.info("ðŸ§ Tool detected: %s - requires_confirmation: %s",
                          tool_data.get('tool'), tool_data.get('requires_confirmation'))
 
             if tool_data.get("requires_confirmation"):
@@ -1866,8 +2328,68 @@ async def process_streaming_transcript(call_sid: str):
                 _logger.info("â³ Awaiting user confirmation for: %s",
                              tool_data.get("tool"))
             else:
-                result = await execute_detected_tool(call_sid, tool_data)
-                _logger.info("Tool execution result: %s", result)
+                # âœ¨ Execute tool and get result
+                _logger.info("âš¡ Executing tool immediately...")
+                tool_result = await execute_detected_tool(call_sid, tool_data)
+                _logger.info(f"ðŸ¦ Tool result: {tool_result}")
+                
+                # âœ¨ Feed tool result back to AI for natural response
+                tool_context = f"""You just executed the tool '{tool_data['tool']}' with result:
+
+Tool Result:
+{tool_result.get('response', tool_result.get('data', tool_result))}
+
+Generate a brief, natural response (1-2 sentences) to inform the user about this result. Be conversational."""
+                
+                _logger.info("ðŸ¤– Asking AI to generate natural response from tool result...")
+                
+                # Clear buffers for tool response
+                ai_tool_response = ""
+                tool_sentence_buffer = ""
+                tool_sentence_count = 0
+                
+                # Get AI's natural response to the tool result
+                async for token in query_rag_streaming(tool_context, conn.conversation_history, call_sid=call_sid):
+                    if conn.interrupt_requested:
+                        break
+                    
+                    ai_tool_response += token
+                    tool_sentence_buffer += token
+                    
+                    # Flush on sentence end
+                    if tool_sentence_buffer.rstrip().endswith(('.', '?', '!')):
+                        sentence = tool_sentence_buffer.strip()
+                        if sentence:
+                            clean_sentence = clean_markdown_for_tts(sentence)
+                            tool_sentence_count += 1
+                            _logger.info("ðŸŽ¯ Tool response sentence %d: '%s'", tool_sentence_count, clean_sentence)
+                            
+                            try:
+                                await asyncio.wait_for(conn.tts_queue.put(clean_sentence), timeout=2.0)
+                            except asyncio.TimeoutError:
+                                if conn.interrupt_requested:
+                                    break
+                        
+                        tool_sentence_buffer = ""
+                        if tool_sentence_count >= 3:  # Limit tool responses
+                            break
+                
+                # Send any remaining text
+                if not conn.interrupt_requested and tool_sentence_buffer.strip():
+                    final_sentence = tool_sentence_buffer.strip()
+                    if final_sentence:
+                        clean_final = clean_markdown_for_tts(final_sentence)
+                        try:
+                            await asyncio.wait_for(conn.tts_queue.put(clean_final), timeout=2.0)
+                        except:
+                            pass
+                
+                # âœ¨ Update conversation history with tool execution
+                if conn.conversation_history:
+                    conn.conversation_history[-1]["tool_executed"] = tool_data['tool']
+                    conn.conversation_history[-1]["tool_result"] = tool_result
+                    conn.conversation_history[-1]["ai_response"] = ai_tool_response
+                    _logger.info(f"âœ… Updated history with tool execution: {tool_data['tool']}")
 
         _logger.info("⏳ Waiting for TTS...")
         # Wait for TTS queue to empty (all sentences spoken)
@@ -2851,14 +3373,29 @@ async def delete_agent_knowledge(
 @app.post("/v1/convai/agents/{agent_id}/tools", tags=["Tools"])
 async def add_agent_tool(
     agent_id: str,
-    tool_name: str,
-    description: str,
-    webhook_url: Optional[str] = None,
-    parameters: Dict = {},
+    tool_data: ToolCreate,
     db: Session = Depends(get_db),
     api_key: str = Depends(verify_api_key)
 ):
-    """Add custom tool to agent"""
+    """
+    Add custom tool to agent
+    
+    Example request body:
+    ```json
+    {
+        "tool_name": "weather",
+        "description": "Get weather information for a location",
+        "webhook_url": "https://your-api.com/weather",
+        "parameters": {
+            "location": {
+                "type": "string",
+                "required": true,
+                "description": "City name"
+            }
+        }
+    }
+    ```
+    """
     # Verify agent exists
     agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
     if not agent:
@@ -2866,22 +3403,23 @@ async def add_agent_tool(
     
     tool = AgentTool(
         agent_id=agent_id,
-        tool_name=tool_name,
-        description=description,
-        webhook_url=webhook_url,
-        parameters=parameters
+        tool_name=tool_data.tool_name,
+        description=tool_data.description,
+        webhook_url=tool_data.webhook_url,
+        parameters=tool_data.parameters or {}
     )
     db.add(tool)
     db.commit()
     db.refresh(tool)
     
-    _logger.info(f"✅ Added tool '{tool_name}' to agent {agent_id}")
+    _logger.info(f"✅ Added tool '{tool_data.tool_name}' to agent {agent_id}")
     
     return {
         "success": True,
         "tool_id": tool.id,
-        "tool_name": tool_name,
-        "agent_id": agent_id
+        "tool_name": tool_data.tool_name,
+        "agent_id": agent_id,
+        "webhook_url": tool_data.webhook_url
     }
 
 
@@ -4005,7 +4543,7 @@ if __name__ == "__main__":
             f"min_energy={INTERRUPT_MIN_ENERGY}, baseline_factor={INTERRUPT_BASELINE_FACTOR}, "
             f"require_text={INTERRUPT_REQUIRE_TEXT}"
         )
-        uvicorn.run("agent_service:app",
+        uvicorn.run("new:app",
                     host=args.host,
                     port=args.port,
                     reload=False,
@@ -4014,4 +4552,3 @@ if __name__ == "__main__":
                     ws_ping_interval=10.0,    # Add WebSocket ping
                     ws_ping_timeout=10.0
                     )
-
